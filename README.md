@@ -109,7 +109,7 @@ replace "dev" in the instructions below with your environment name if needed.
 ## Notes ##
 
 Running `pre-commit` requires running `terraform init` in every directory that
-contains Terraform code. In this repository, this is only  the main directory.
+contains Terraform code. In this repository, this is only the main directory.
 
 ## Contributing ##
 
