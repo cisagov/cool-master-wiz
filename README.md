@@ -2,34 +2,64 @@
 
 [![GitHub Build Status](https://github.com/cisagov/cool-master-wiz/workflows/build/badge.svg)](https://github.com/cisagov/cool-master-wiz/actions)
 
-This is a generic skeleton project that can be used to quickly get a
-new [cisagov](https://github.com/cisagov) [Terraform
-module](https://www.terraform.io/docs/modules/index.html) GitHub
-repository started.  This skeleton project contains [licensing
-information](LICENSE), as well as [pre-commit
-hooks](https://pre-commit.com) and
-[GitHub Actions](https://github.com/features/actions) configurations
-appropriate for the major languages that we use.
+This is a Terraform module for creating a role and policies in the COOL Master
+account to be used with a [Wiz](https://www.wiz.io/) AWS connector.
 
-See the [Terraform
-documentation](https://www.terraform.io/docs/modules/index.html) for
-more details on Terraform modules and the standard module structure.
+## Pre-requisites ##
+
+- [Terraform](https://www.terraform.io/) installed on your system.
+- An accessible AWS S3 bucket to store Terraform state
+  (specified in [backend.tf](backend.tf)).
+- An accessible AWS DynamoDB database to store the Terraform state lock
+  (specified in [backend.tf](backend.tf)).
+- Access to all of the Terraform remote states specified in
+  [remote_states.tf](remote_states.tf).
 
 ## Usage ##
 
-```hcl
-module "example" {
-  source = "github.com/cisagov/cool-master-wiz?ref=v0.0.1"
+For the purposes of these instructions, assume the environment is named "dev";
+replace "dev" in the instructions below with your environment name if needed.
 
-  aws_region            = "us-west-1"
-  aws_availability_zone = "b"
-  subnet_id             = "subnet-0123456789abcdef0"
-}
-```
+1. Create a backend configuration file named `dev.tfconfig` containing the name
+   of the bucket where Terraform state is stored for that environment.
 
-## Examples ##
+    ```hcl
+    bucket = "my-dev-terraform-state-bucket"
+    ```
 
-- [Basic usage](https://github.com/cisagov/cool-master-wiz/tree/develop/examples/basic_usage)
+1. Initialize the Terraform backend for the "dev" environment using your backend
+   configuration file:
+
+    ```console
+    terraform init -upgrade -backend-config=dev.tfconfig
+    ```
+
+    > [!NOTE] When performing this step for additional environments (i.e. not
+    > your first environment), use the `-reconfigure` flag:
+    >
+    > ```console
+    > terraform init -upgrade -backend-config=other-env.tfconfig -reconfigure
+    > ```
+
+1. Create a Terraform workspace (if you haven't already done so) by running
+   `terraform workspace new dev`
+1. Create a `dev.tfvars` file with all required variables and any optional
+   variables that you wish to override (see [Inputs](#inputs) below for
+   details):
+
+   ```console
+   external_id            = "your-external-aws-wiz-connector-id"
+   remote_arn             = "arn:aws:iam::123456789012:role/your-remote-role"
+   terraform_state_bucket = "my-dev-terraform-state-bucket"
+
+   tags = {
+     Team        = "Your Team Name"
+     Application = "COOL - Wiz"
+     Workspace   = "dev"
+   }
+   ```
+
+1. Run the command `terraform apply -var-file=dev.tfvars`.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements ##
@@ -44,51 +74,42 @@ module "example" {
 | Name | Version |
 |------|---------|
 | aws | >= 4.9 |
+| terraform | n/a |
 
 ## Modules ##
 
-No modules.
+| Name | Source | Version |
+|------|--------|---------|
+| wiz | `https://wizio-public-fedramp.s3-us-gov-west-1.amazonaws.com/deployment-v3/aws/terraform/2209/wiz-aws-native-terraform-terraform-module.zip` | n/a |
 
 ## Resources ##
 
 | Name | Type |
 |------|------|
-| [aws_instance.example](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance) | resource |
-| [aws_ami.example](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
-| [aws_default_tags.default](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/default_tags) | data source |
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
+| [terraform_remote_state.master](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/data-sources/remote_state) | data source |
 
 ## Inputs ##
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| ami\_owner\_account\_id | The ID of the AWS account that owns the Example AMI, or "self" if the AMI is owned by the same account as the provisioner. | `string` | `"self"` | no |
-| aws\_availability\_zone | The AWS availability zone to deploy into (e.g. a, b, c, etc.). | `string` | `"a"` | no |
 | aws\_region | The AWS region to deploy into (e.g. us-east-1). | `string` | `"us-east-1"` | no |
-| subnet\_id | The ID of the AWS subnet to deploy into (e.g. subnet-0123456789abcdef0). | `string` | n/a | yes |
+| external\_id | The external ID of the Wiz AWS Connector.  This value must be retrieved from the Wiz portal when creating the AWS Connector. | `string` | n/a | yes |
+| remote\_arn | The AWS Trust Policy Role ARN for your Wiz data center.  It can be retrieved from the Wiz portal (User Settings, Tenant). | `string` | n/a | yes |
+| tags | Tags to apply to all AWS resources created. | `map(string)` | `{}` | no |
+| terraform\_state\_bucket | The name of the S3 bucket where Terraform state is stored. | `string` | n/a | yes |
 
 ## Outputs ##
 
 | Name | Description |
 |------|-------------|
-| arn | The EC2 instance ARN. |
-| availability\_zone | The AZ where the EC2 instance is deployed. |
-| id | The EC2 instance ID. |
-| private\_ip | The private IP of the EC2 instance. |
-| subnet\_id | The ID of the subnet where the EC2 instance is deployed. |
+| wiz\_connector\_arn | n/a |
 <!-- END_TF_DOCS -->
 
 ## Notes ##
 
 Running `pre-commit` requires running `terraform init` in every directory that
-contains Terraform code. In this repository, these are the main directory and
-every directory under `examples/`.
-
-## New Repositories from a Skeleton ##
-
-Please see our [Project Setup guide](https://github.com/cisagov/development-guide/tree/develop/project_setup)
-for step-by-step instructions on how to start a new repository from
-a skeleton. This will save you time and effort when configuring a
-new repository!
+contains Terraform code. In this repository, this is only  the main directory.
 
 ## Contributing ##
 
