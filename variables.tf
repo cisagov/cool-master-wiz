@@ -4,8 +4,24 @@
 # You must provide a value for each of these parameters.
 # ------------------------------------------------------------------------------
 
-variable "subnet_id" {
-  description = "The ID of the AWS subnet to deploy into (e.g. subnet-0123456789abcdef0)."
+variable "external_id" {
+  description = "The external ID of the Wiz AWS Connector.  This value must be retrieved from the Wiz portal when creating the AWS Connector."
+  nullable    = false
+  type        = string
+  validation {
+    condition     = can(regex("\\S{8}-\\S{4}-\\S{4}-\\S{4}-\\S{12}", var.external_id))
+    error_message = "The external_id must match the pattern XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX (UUID format)."
+  }
+}
+
+variable "remote_arn" {
+  description = "The AWS Trust Policy Role ARN for your Wiz data center.  It can be retrieved from the Wiz portal (User Settings, Tenant)."
+  nullable    = false
+  type        = string
+}
+
+variable "terraform_state_bucket" {
+  description = "The name of the S3 bucket where Terraform state is stored."
   nullable    = false
   type        = string
 }
@@ -15,23 +31,17 @@ variable "subnet_id" {
 #
 # These parameters have reasonable defaults.
 # ------------------------------------------------------------------------------
-variable "ami_owner_account_id" {
-  default     = "self"
-  description = "The ID of the AWS account that owns the Example AMI, or \"self\" if the AMI is owned by the same account as the provisioner."
-  nullable    = false
-  type        = string
-}
-
-variable "aws_availability_zone" {
-  default     = "a"
-  description = "The AWS availability zone to deploy into (e.g. a, b, c, etc.)."
-  nullable    = false
-  type        = string
-}
 
 variable "aws_region" {
   default     = "us-east-1"
   description = "The AWS region to deploy into (e.g. us-east-1)."
   nullable    = false
   type        = string
+}
+
+variable "tags" {
+  default     = {}
+  description = "Tags to apply to all AWS resources created."
+  nullable    = false
+  type        = map(string)
 }
